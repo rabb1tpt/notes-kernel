@@ -39,6 +39,7 @@ fi
 # === Structure creation ===
 mkdir -p \
   "$VAULT_PATH/inbox" \
+  "$VAULT_PATH/notes" \
   "$VAULT_PATH/videos/inbox" \
   "$VAULT_PATH/videos/archive" \
   "$VAULT_PATH/audios/inbox" \
@@ -51,6 +52,7 @@ echo ""
 echo "Structure created:"
 echo "  inbox/"
 echo "  videos/inbox/"
+echo "  videos/notes/"
 echo "  videos/archive/"
 echo "  audios/inbox/"
 echo "  audios/transcripts/"
