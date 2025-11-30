@@ -9,13 +9,14 @@ from pathlib import Path
 def usage():
     print(
         "Usage:\n"
-        "nk init	-> Sets up or updates the local Python virtual environment\n"
+        "nk init\t-> Sets up or updates the local Python virtual environment\n"
         "\n"
         "nk vault init [path] -> Initializes a vault folder structure\n"
         "\n"
         "nk videos process [vault-path] -> Converts .mp4 videos to .mp3 audios\n"
         "\n"
         "nk audios process [vault-path] -> Transcribes .mp3 audios to .txt transcripts using Whisper\n"
+        "nk audios record [vault-path] [filename] -> Records a .mp3 audio note into the vault\n"
         "\n"
         "nk notes new \"title\" -> Creates a markdown note with a standard template\n"
     )
@@ -39,16 +40,27 @@ def normalize_path(raw: str | None) -> str:
     return str(p)
 
 
-def run_script(script_name: str, target: str) -> int:
+def run_script(script_name: str, *args: str) -> int:
     kernel_dir = Path(__file__).resolve().parent
     script = kernel_dir / "internals" / script_name
     if not script.exists():
         print(f"Error: {script_name} not found in {kernel_dir}")
         return 1
+
+    cmd = [str(script), *[str(a) for a in args]]
+
     try:
-        subprocess.run([str(script), target], check=True)
+        # keep strict behavior: non-zero exit → CalledProcessError
+        result = subprocess.run(cmd, check=True)
+        return result.returncode
+    except KeyboardInterrupt:
+        # User hit Ctrl+C (e.g. stop ffmpeg).
+        # At this point the child has already handled SIGINT and flushed output.
+        # We treat this as a normal, intentional stop.
         return 0
     except subprocess.CalledProcessError as e:
+        # Script failed (init, videos, audios-process, etc).
+        # Return its exit code without a Python traceback.
         return e.returncode
 
 
@@ -60,7 +72,7 @@ def main(argv: list[str]) -> int:
     cmd = argv[0]
     sub = argv[1] if len(argv) > 1 else None
     rest = argv[2:] if len(argv) > 2 else []
-    
+
     if cmd == "init":
         """
         Initializes or updates the local notes-kernel environment.
@@ -151,14 +163,42 @@ def main(argv: list[str]) -> int:
             print("Usage: nk note new \"note title\"")
             return 1
 
-
     if cmd == "audios":
         if sub == "process":
             target = normalize_path(rest[0] if rest else ".")
             return run_script("notes-audios-to-texts.sh", target)
+
+        elif sub == "record":
+            # Supported forms:
+            # nk audios record
+            # nk audios record "name"
+            # nk audios record /path/to/vault
+            # nk audios record /path/to/vault "name"
+            vault = "."
+            name = ""
+
+            if len(rest) == 0:
+                # nk audios record
+                pass
+            elif len(rest) == 1:
+                arg = rest[0]
+                # Heuristic: if it looks like a path, treat as vault, else as filename
+                if arg == "." or "/" in arg or arg.startswith("~"):
+                    vault = normalize_path(arg)
+                else:
+                    name = arg
+            else:
+                # len(rest) >= 2
+                vault = normalize_path(rest[0])
+                name = rest[1]
+
+            return run_script("notes-audios-record.sh", vault, name)
+
         else:
             print("Unknown audios command:", sub or "<missing>")
-            print("Usage: nk audios process [vault-path]")
+            print("Usage:")
+            print("  nk audios process [vault-path]")
+            print("  nk audios record [vault-path] [filename]")
             return 1
 
     print("Unknown nk command:", cmd)
