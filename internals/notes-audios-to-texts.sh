@@ -3,7 +3,7 @@ set -euo pipefail
 
 # === Config / Setup ===
 # Location of the helper script (adjust if needed)
-MP3_TO_TXT_SCRIPT="$(dirname "$0")/internals/mp3-to-txt-file.sh"
+MP3_TO_TXT_SCRIPT="$(dirname "$0")/mp3-to-txt-file.sh"
 
 # Vault path (default: current directory)
 VAULT_PATH="${1:-.}"

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # === Config / Setup ===
 # Location of the helper script (adjust if needed)
-MP4_TO_MP3_SCRIPT="$(dirname "$0")/internals/mp4-to-mp3-file.sh"
+MP4_TO_MP3_SCRIPT="$(dirname "$0")/mp4-to-mp3-file.sh"
 
 VAULT_PATH="${1:-.}"
 
