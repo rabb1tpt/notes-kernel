@@ -9,18 +9,15 @@ from pathlib import Path
 def usage():
     print(
         "Usage:\n"
-        "  nk vault init [path]\n"
-        "      Initialize a vault at [path] (default: current directory).\n"
+        "nk init	-> Sets up or updates the local Python virtual environment\n"
         "\n"
-        "  nk videos process [vault-path]\n"
-        "      Convert videos/inbox/*.mp4 -> audios/inbox/*.mp3 inside the vault.\n"
+        "nk vault init [path] -> Initializes a vault folder structure\n"
         "\n"
-        "  nk audios process [vault-path]\n"
-        "      Transcribe audios/inbox/*.mp3 -> audios/transcripts/*.txt inside the vault.\n"
+        "nk videos process [vault-path] -> Converts .mp4 videos to .mp3 audios\n"
         "\n"
-        "  nk notes new [title]\n"
-        "      Creates a new note with [title].\n"
-
+        "nk audios process [vault-path] -> Transcribes .mp3 audios to .txt transcripts using Whisper\n"
+        "\n"
+        "nk notes new \"title\" -> Creates a markdown note with a standard template\n"
     )
 
 
@@ -44,7 +41,7 @@ def normalize_path(raw: str | None) -> str:
 
 def run_script(script_name: str, target: str) -> int:
     kernel_dir = Path(__file__).resolve().parent
-    script = kernel_dir / script_name
+    script = kernel_dir / "internals" / script_name
     if not script.exists():
         print(f"Error: {script_name} not found in {kernel_dir}")
         return 1
