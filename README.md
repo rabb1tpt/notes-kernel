@@ -12,10 +12,11 @@ Works beautifully to create note vaults that you can manage on Obsidian for exam
 | Stage | Command | Description |
 |--------|----------|-------------|
 | 🗂️ Vault setup | `nk vault init [path]` | Initializes a vault folder structure |
-| 🎬 Video → Audio | `nk videos process [vault-path]` | Converts `.mp4` videos → `.mp3` audios |
-| 🎧 Audio → Text | `nk audios process [vault-path]` | Transcribes `.mp3` audios → `.txt` transcripts using Whisper |
+| 🎬 Video to Audio | `nk videos process [vault-path]` | Converts `.mp4` videos to `.mp3` audios |
+| 🎧 Audio to Text | `nk audios process [vault-path]` | Transcribes `.mp3` audios to `.txt` transcripts using Whisper |
+| 🎤 Record Audio | `nk audios record [vault-path]` | Record `.mp3` audios directly from the terminal |
 | 📝 Notes | `nk notes new "title"` | Creates a markdown note with a standard template |
-| ⚙️ Environment | `nk init` | Sets up or updates the local Python virtual environment |
+| ⚙️  Environment | `nk init` | Sets up or updates the local Python virtual environment |
 
 All commands are invoked through the single CLI entrypoint `nk`.
 
@@ -186,7 +187,6 @@ If `nk videos process` or `nk audios process` show `⚠️ Skipped`, check paths
 
 ## 🧰 Roadmap Ideas
 
-- [ ] `nk audios rec` – record audio from the terminal
 - [ ] `nk videos rec` – record video from the terminal
 
 ---
