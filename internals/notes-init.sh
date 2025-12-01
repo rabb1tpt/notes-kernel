@@ -28,11 +28,11 @@ esac
 # === Create vault directory if missing ===
 if [ ! -d "$VAULT_PATH" ]; then
   echo "Directory '$VAULT_PATH' does not exist."
-  printf "Create it? [y/N]: "
+  printf "Create it? [Y/n]: "
   read -r ans
   case "$ans" in
-    y|Y) mkdir -p "$VAULT_PATH" ;;
-    *) echo "Aborting."; exit 1 ;;
+    n) echo "Aborting."; exit 1 ;;
+    *) mkdir -p "$VAULT_PATH" ;;
   esac
 fi
 
