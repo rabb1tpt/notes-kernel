@@ -2,9 +2,9 @@
 import sys
 import subprocess
 import datetime
+import os
 
 from pathlib import Path
-
 
 def usage():
     print(
@@ -19,7 +19,154 @@ def usage():
         "nk audios record [vault-path] [filename] -> Records a .mp3 audio note into the vault\n"
         "\n"
         "nk notes new \"title\" -> Creates a markdown note with a standard template\n"
+        "\n"
+        "nk autosetup systemd [vault-path] [interval] -> Generate systemd service+timer to auto-process audios/videos\n"
     )
+
+def load_systemd_template(name: str) -> str:
+    """
+    Load a systemd-related template from internals/templates/systemd.
+    """
+    kernel_dir = Path(__file__).resolve().parent
+    tpl_path = kernel_dir / "internals" / "templates" / "systemd" / name
+    if not tpl_path.is_file():
+        raise SystemExit(f"Template not found: {tpl_path}")
+    return tpl_path.read_text()
+
+def autosetup_systemd_generate(rest: list[str]) -> int:
+    """
+    Usage:
+      nk autosetup systemd [vault-path] [interval]
+
+    - vault-path: optional, default "."
+    - interval:   optional, default "5min" (systemd time span, e.g. 10min, 1h)
+    """
+    vault_raw = rest[0] if len(rest) >= 1 else "."
+    interval = rest[1] if len(rest) >= 2 else "5min"
+
+    vault = Path(normalize_path(vault_raw)).resolve()
+    if not vault.exists():
+        print(f"Error: vault path does not exist: {vault}")
+        return 1
+
+    vault_id = vault.name
+
+    # Where this nk.py lives and which Python is running it
+    kernel_dir = Path(__file__).resolve().parent
+    nk_py = kernel_dir / "nk.py"
+    python_bin = sys.executable
+
+    # 1) Runner script inside the vault (versioned with the vault)
+    auto_dir = vault / ".nk" / "auto"
+    auto_dir.mkdir(parents=True, exist_ok=True)
+    runner_script_path = auto_dir / f"run_nk_{vault_id}.sh"
+
+    runner_tpl = load_systemd_template("run_nk_on_vault.sh.tpl")
+    runner_content = runner_tpl.format(
+        vault_path=str(vault),
+        vault_id=vault_id,
+        nk_py=str(nk_py),
+        python_bin=python_bin,
+        runner_script_path=str(runner_script_path),
+        interval=interval,
+    )
+    runner_script_path.write_text(runner_content)
+    runner_script_path.chmod(0o755)
+
+    # 2) Systemd user units under ~/.config/systemd/user
+    config_root = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    user_systemd = config_root / "systemd" / "user"
+    user_systemd.mkdir(parents=True, exist_ok=True)
+
+    service_path = user_systemd / f"nk-{vault_id}.service"
+    timer_path = user_systemd / f"nk-{vault_id}.timer"
+
+    service_tpl = load_systemd_template("nk-vault.service.tpl")
+    timer_tpl = load_systemd_template("nk-vault.timer.tpl")
+
+    service_content = service_tpl.format(
+        vault_path=str(vault),
+        vault_id=vault_id,
+        nk_py=str(nk_py),
+        python_bin=python_bin,
+        runner_script_path=str(runner_script_path),
+        interval=interval,
+    )
+    timer_content = timer_tpl.format(
+        vault_path=str(vault),
+        vault_id=vault_id,
+        nk_py=str(nk_py),
+        python_bin=python_bin,
+        runner_script_path=str(runner_script_path),
+        interval=interval,
+    )
+
+    service_path.write_text(service_content)
+    timer_path.write_text(timer_content)
+
+    print("✅ Generated automation files:")
+    print(f"  Runner script: {runner_script_path}")
+    print(f"  Service unit:  {service_path}")
+    print(f"  Timer unit:    {timer_path}")
+    print()
+    print("To activate this timer, run:")
+    print(f"  nk autosetup systemd-activate {vault}")
+    return 0
+
+
+
+def autosetup_systemd_activate(rest: list[str]) -> int:
+    """
+    nk autosetup systemd-activate [vault-path]
+
+    Activates the systemd timer for the given vault by name:
+      nk-<vault-id>.timer
+
+    Assumes autosetup_systemd_generate was already run so that
+    the .service and .timer files exist under ~/.config/systemd/user.
+    """
+    vault_raw = rest[0] if len(rest) >= 1 else "."
+    vault = Path(normalize_path(vault_raw)).resolve()
+    if not vault.exists():
+        print(f"Error: vault path does not exist: {vault}")
+        return 1
+
+    vault_id = vault.name
+
+    config_root = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    user_systemd = config_root / "systemd" / "user"
+    service_path = user_systemd / f"nk-{vault_id}.service"
+    timer_path = user_systemd / f"nk-{vault_id}.timer"
+
+    missing: list[str] = []
+    if not service_path.is_file():
+        missing.append(str(service_path))
+    if not timer_path.is_file():
+        missing.append(str(timer_path))
+
+    if missing:
+        print("Error: missing systemd unit files:")
+        for m in missing:
+            print(f"  {m}")
+        print("Run `nk autosetup systemd [vault-path] [interval]` first.")
+        return 1
+
+    try:
+        subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+        subprocess.run(
+            ["systemctl", "--user", "enable", "--now", f"nk-{vault_id}.timer"],
+            check=True,
+        )
+        print(f"✅ Activated timer: nk-{vault_id}.timer for vault {vault}")
+    except Exception as e:
+        print(f"⚠️ Failed to activate timer: {e}")
+        print("You can also try manually:")
+        print("  systemctl --user daemon-reload")
+        print(f"  systemctl --user enable --now nk-{vault_id}.timer")
+        return 1
+
+    return 0
+
 
 
 def normalize_path(raw: str | None) -> str:
@@ -41,17 +188,21 @@ def normalize_path(raw: str | None) -> str:
 
 
 def run_script(script_name: str, *args: str) -> int:
+    print("nk.py - run_script start...")
     kernel_dir = Path(__file__).resolve().parent
     script = kernel_dir / "internals" / script_name
     if not script.exists():
         print(f"Error: {script_name} not found in {kernel_dir}")
         return 1
-
+    
     cmd = [str(script), *[str(a) for a in args]]
+    print(f"nk.py - cmd ready: {cmd}")
 
     try:
         # keep strict behavior: non-zero exit → CalledProcessError
+        print("nk.py - calling cmd...")
         result = subprocess.run(cmd, check=True)
+        print(f"nk.py - cmd result: {result}")
         return result.returncode
     except KeyboardInterrupt:
         # User hit Ctrl+C (e.g. stop ffmpeg).
@@ -59,10 +210,21 @@ def run_script(script_name: str, *args: str) -> int:
         # We treat this as a normal, intentional stop.
         return 0
     except subprocess.CalledProcessError as e:
-        # Script failed (init, videos, audios-process, etc).
-        # Return its exit code without a Python traceback.
-        return e.returncode
+        print("❌ nk.py - cmd failed!")
+        print(f"   Command: {e.cmd}")
+        print(f"   Exit code: {e.returncode}")
 
+        # stderr
+        if e.stderr:
+            print("   --- STDERR ---")
+            print(e.stderr.decode().strip())
+
+        # stdout
+        if e.output:
+            print("   --- STDOUT ---")
+            print(e.output.decode().strip())
+
+        return e.returncode
 
 def main(argv: list[str]) -> int:
     if not argv or argv[0] in {"help", "-h", "--help"}:
@@ -201,10 +363,22 @@ def main(argv: list[str]) -> int:
             print("  nk audios record [vault-path] [filename]")
             return 1
 
+    if cmd == "autosetup":
+        if sub == "systemd":
+            return autosetup_systemd_generate(rest)
+        if sub == "systemd-activate":
+            return autosetup_systemd_activate(rest)
+        print("Unknown autosetup command:", sub or "<missing>")
+        print("Usage:")
+        print("  nk autosetup systemd [vault-path] [interval]")
+        print("  nk autosetup systemd-activate [vault-path]")
+        return 1
+
     print("Unknown nk command:", cmd)
     print("Run 'nk help' for usage.")
     return 1
 
+    
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
