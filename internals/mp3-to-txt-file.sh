@@ -78,15 +78,17 @@ fi
 # --task translate  : to English
 # --output_format txt ensures a single .txt file
 # --output_dir "$DIR" puts it alongside the .mp3
+echo "Calling whisper..."
 whisper "$IN" \
   --model "$MODEL" \
   --task "$TASK" \
   --output_format txt \
   --output_dir "$DIR"
+echo "✅ whisper call completed."
 
 # Sanity check output exists
 if [ ! -f "$OUT_TXT" ]; then
-  echo "Warning: Expected transcript not found at '$OUT_TXT'."
+  echo "🔴 Expected transcript not found at '$OUT_TXT'."
   echo "Whisper may have changed the output name. Check files in: $DIR"
   exit 1
 fi
