@@ -37,14 +37,22 @@ if [ ! -d "$VAULT_PATH" ]; then
 fi
 
 # === Structure creation ===
-mkdir -p \
-  "$VAULT_PATH/inbox" \
-  "$VAULT_PATH/notes" \
-  "$VAULT_PATH/videos/inbox" \
-  "$VAULT_PATH/videos/archive" \
-  "$VAULT_PATH/audios/inbox" \
-  "$VAULT_PATH/audios/transcripts" \
+DIRS=(
+  "$VAULT_PATH/inbox"
+  "$VAULT_PATH/notes"
+  "$VAULT_PATH/videos/inbox"
+  "$VAULT_PATH/videos/archive"
+  "$VAULT_PATH/audios/inbox"
+  "$VAULT_PATH/audios/transcripts"
   "$VAULT_PATH/audios/archive"
+)
+
+for d in "${DIRS[@]}"; do
+  mkdir -p "$d"
+  # ensure Git tracks the directory even if empty
+  touch "$d/.gitkeep"
+done
+
 
 echo ""
 echo "✅ Vault initialized at: $VAULT_PATH"
