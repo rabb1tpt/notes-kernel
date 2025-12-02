@@ -45,7 +45,7 @@ for video in "$VIDEOS_INBOX"/*.mp4; do
     echo "✅ MP3 available at $(basename "$mp3_dst")"
     mv "$video" "$VIDEOS_ARCHIVE/"
     echo "✅ Archived video: $(basename "$video")"
-    ((count++))
+    count=$((count + 1))
   else
     echo "⚠️  Skipped: conversion failed for $video"
   fi
