@@ -12,6 +12,7 @@ AUDIOS_INBOX="$VAULT_PATH/audios/inbox"
 AUDIOS_TRANSCRIPTS="$VAULT_PATH/audios/transcripts"
 AUDIOS_ARCHIVE="$VAULT_PATH/audios/archive"
 
+echo "Safety checks start..."
 # === Safety checks ===
 if [ ! -d "$AUDIOS_INBOX" ]; then
   echo "Error: '$AUDIOS_INBOX' does not exist. Run vault-init.sh first." >&2
@@ -22,8 +23,10 @@ if [ ! -f "$MP3_TO_TXT_SCRIPT" ]; then
   echo "Error: mp3-to-txt-file.sh not found at $MP3_TO_TXT_SCRIPT" >&2
   exit 1
 fi
+echo "✅ Safety checks done."
 
 mkdir -p "$AUDIOS_TRANSCRIPTS" "$AUDIOS_ARCHIVE"
+echo "✅ Folders are ready"
 
 # === Process ===
 shopt -s nullglob
@@ -34,10 +37,12 @@ for audio in "$AUDIOS_INBOX"/*.mp3; do
 
   base="$(basename "${audio%.*}")"
   txt_src="$AUDIOS_INBOX/${base}.txt"
-  txt_dst="$AUDIOS_TRANSCRIPTS/${base}.txt"
+  txt_dst="$AUDIOS_TRANSCRIPTS/${base}.md"
 
   # Call the existing conversion script
+  echo "Calling "$MP3_TO_TXT_SCRIPT" ..."
   "$MP3_TO_TXT_SCRIPT" "$audio"
+  echo "✅ Call complete." 
 
   # Move audio to archive if transcript exists
   if [ -f "$txt_src" ]; then
@@ -45,7 +50,7 @@ for audio in "$AUDIOS_INBOX"/*.mp3; do
     echo "✅ Saved transcript: $(basename "$txt_dst")"
     mv "$audio" "$AUDIOS_ARCHIVE/"
     echo "✅ Archived audio: $(basename "$audio")"
-    ((count++))
+    count=$((count + 1))
   else
     echo "⚠️  Skipped: transcription failed for $audio"
   fi
@@ -58,4 +63,3 @@ else
   echo "Done. Transcribed $count audio files."
   echo "Transcripts are in: $AUDIOS_TRANSCRIPTS"
 fi
-
