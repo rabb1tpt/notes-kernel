@@ -8,8 +8,12 @@ MP4_TO_MP3_SCRIPT="$(dirname "$0")/mp4-to-mp3-file.sh"
 VAULT_PATH="${1:-.}"
 
 VIDEOS_INBOX="$VAULT_PATH/videos/inbox"
-VIDEOS_ARCHIVE="$VAULT_PATH/videos/archive"
 AUDIOS_INBOX="$VAULT_PATH/audios/inbox"
+
+# Local archive outside Git (can be overridden with NK_LOCAL_ARCHIVE_ROOT)
+NK_LOCAL_ARCHIVE_ROOT="${NK_LOCAL_ARCHIVE_ROOT:-$HOME/.nk-archive}"
+SAFE_VAULT_NAME="$(basename "$VAULT_PATH" | tr ' ' '_' )"
+VIDEOS_ARCHIVE="$NK_LOCAL_ARCHIVE_ROOT/$SAFE_VAULT_NAME/videos"
 
 # === Safety checks ===
 if [ ! -d "$VIDEOS_INBOX" ]; then

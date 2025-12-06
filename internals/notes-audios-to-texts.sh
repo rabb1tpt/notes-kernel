@@ -10,7 +10,11 @@ VAULT_PATH="${1:-.}"
 
 AUDIOS_INBOX="$VAULT_PATH/audios/inbox"
 AUDIOS_TRANSCRIPTS="$VAULT_PATH/audios/transcripts"
-AUDIOS_ARCHIVE="$VAULT_PATH/audios/archive"
+
+# Local archive outside Git (can be overridden with NK_LOCAL_ARCHIVE_ROOT)
+NK_LOCAL_ARCHIVE_ROOT="${NK_LOCAL_ARCHIVE_ROOT:-$HOME/.nk-archive}"
+SAFE_VAULT_NAME="$(basename "$VAULT_PATH" | tr ' ' '_' )"
+AUDIOS_ARCHIVE="$NK_LOCAL_ARCHIVE_ROOT/$SAFE_VAULT_NAME/audios"
 
 echo "Safety checks start..."
 # === Safety checks ===
