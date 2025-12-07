@@ -21,6 +21,14 @@ def usage():
         "nk notes new \"title\" -> Creates a markdown note with a standard template\n"
         "\n"
         "nk autosetup systemd [vault-path] [interval] -> Generate systemd service+timer to auto-process audios/videos\n"
+        "nk autosetup systemd-activate [vault-path] -> Activate the generated systemd timer\n"
+        "\n"
+        "nk auto status [vault-path]   -> Show service/timer status + queue\n"
+        "nk auto queue [vault-path]    -> Show counts of pending MP4/MP3 in inbox\n"
+        "nk auto run [vault-path]      -> Trigger a manual run of the vault service now\n"
+        "nk auto logs [vault-path]     -> Show recent logs for the vault service\n"
+        "nk auto enable [vault-path]   -> Enable the vault timer (auto-processing ON)\n"
+        "nk auto disable [vault-path]  -> Disable the vault timer (auto-processing OFF)\n"
     )
 
 def load_systemd_template(name: str) -> str:
@@ -374,6 +382,22 @@ def main(argv: list[str]) -> int:
         print("  nk autosetup systemd-activate [vault-path]")
         return 1
 
+    if cmd == "auto":
+        # nk auto <subcommand> [vault-path]
+        if not sub:
+            print("Usage:")
+            print("  nk auto status [vault-path]")
+            print("  nk auto queue [vault-path]")
+            print("  nk auto run [vault-path]")
+            print("  nk auto logs [vault-path]")
+            print("  nk auto enable [vault-path]")
+            print("  nk auto disable [vault-path]")
+            return 1
+
+        # sub is e.g. status, queue, run, logs, enable, disable
+        target = normalize_path(rest[0] if rest else ".")
+        return run_script("notes-auto-service.sh", sub, target)
+ 
     print("Unknown nk command:", cmd)
     print("Run 'nk help' for usage.")
     return 1
