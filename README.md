@@ -1,205 +1,257 @@
-# 🧠 Notes Kernel
+# 🧠 Notes Kernel (`nk`)
 
-**Notes Kernel (nk)** is a lightweight CLI toolkit for managing your personal or research vaults.  
-It handles the entire flow from **video recording -> audio -> transcript -> note**, powered by local tools and open-source AI.
-It also enables you to keep things simple and just create a quick note too.
+Notes Kernel (nk) is a lightweight CLI toolkit for managing your personal note vaults.
+
+It handles the entire flow from video recording -> audio -> transcript -> note, powered by local tools and open-source AI (like OpenAI Whisper).
+
+It also enables you to keep things simple and just create a quick note too. 
+
 Works beautifully to create note vaults that you can manage on Obsidian for example.
 
 ---
 
-## 📦 Features
+# 🚀 Commands Overview
 
-| Stage | Command | Description |
-|--------|----------|-------------|
-| 🗂️ Vault setup | `nk vault init [path]` | Initializes a vault folder structure |
-| 🎬 Video to Audio | `nk videos process [vault-path]` | Converts `.mp4` videos to `.mp3` audios |
-| 🎧 Audio to Text | `nk audios process [vault-path]` | Transcribes `.mp3` audios to `.txt` transcripts using Whisper |
-| 🎤 Record Audio | `nk audios record [vault-path]` | Record `.mp3` audios directly from the terminal |
-| 📝 Notes | `nk notes new "title"` | Creates a markdown note with a standard template |
-| ⚙️  Environment | `nk init` | Sets up or updates the local Python virtual environment |
-
-All commands are invoked through the single CLI entrypoint `nk`.
+### 🔧 Environment Setup
+| Command | Description |
+|--------|-------------|
+| `nk init` | Creates/updates local `venv/`, installs dependencies, checks ffmpeg |
 
 ---
 
-## 🧩 Architecture
-
-Notes Kernel is intentionally modular:
-
-| Layer | Responsibility |
-|--------|----------------|
-| `nk.py` | Main CLI entrypoint and command router |
-| `notes-videos-to-audios.sh` | Converts all videos in a vault folder |
-| `notes-audios-to-texts.sh` | Transcribes all audios in a vault folder |
-| `venv/` | Local environment with required Python packages |
-| `requirements.txt` | List of Python dependencies (`openai-whisper`, etc.) |
-| `mp3-to-txt-file.sh` | Transcribes a single `.mp3` to `.txt` using Whisper (internals) |
-| `mp4-to-mp3-file.sh` | Converts a single `.mp4` to `.mp3` (internals) |
-
-This separation ensures:
-- Each layer does **one thing well**
-- Vaults stay **data-only**
-- The kernel is **reproducible** and **self-contained**
+### 🗂️ Vault Management
+| Command | Description |
+|--------|-------------|
+| `nk vault init [path]` | Initializes a vault folder structure |
 
 ---
 
-## 🧭 Typical Vault Layout
+### 🎬 Video → Audio
+| Command | Description |
+|--------|-------------|
+| `nk videos process [vault-path]` | Converts `.mp4` → `.mp3` into `audios/inbox/` |
+
+---
+
+### 🎧 Audio → Transcript
+| Command | Description |
+|--------|-------------|
+| `nk audios process [vault-path]` | Transcribes `.mp3` → `.txt` via Whisper |
+| `nk audios record [vault-path] [filename]` | Records audio directly into the vault |
+
+---
+
+### 📝 Notes
+| Command | Description |
+|--------|-------------|
+| `nk notes new "title"` | Creates a markdown note with date prefix |
+| `nk daily` | Creates (or opens) the daily note using templates |
+
+> Daily notes now support templates:
+- Vault override: `.nk/templates/notes/daily.md.tpl`
+- Kernel fallback: `internals/templates/notes/daily.md.tpl`
+
+Templates may use `{date}` placeholder.
+
+---
+
+### ⚙️ Systemd Auto-Processing
+| Command | Description |
+|--------|-------------|
+| `nk autosetup systemd [vault-path] [interval]` | Generates systemd service + timer |
+| `nk autosetup systemd-activate [vault-path]` | Activates the timer |
+| `nk auto status [vault-path]` | Show timer/service status |
+| `nk auto queue [vault-path]` | Count pending items |
+| `nk auto run [vault-path]` | Manually trigger a run |
+| `nk auto logs [vault-path]` | View recent logs |
+| `nk auto enable / disable [vault-path]` | Toggle automation |
+
+Automation is vault-specific.  
+Units are placed into:
+
+```
+~/.config/systemd/user/nk-<vault-name>.service
+~/.config/systemd/user/nk-<vault-name>.timer
+```
+
+The vault itself receives a runnable script:
+
+```
+.vault/.nk/auto/run_nk_<vault>.sh
+```
+
+---
+
+# 📐 Vault Layout
 
 ```
 vault/
 ├── videos/
 │   ├── inbox/
-│   │   ├── 2025-11-04 13-05-23.mp4
-│   │   └── ...
 │   └── archive/
 ├── audios/
 │   ├── inbox/
-│   │   ├── 2025-11-04 13-05-23.mp3
-│   │   └── ...
 │   ├── transcripts/
-│   │   ├── 2025-11-04 13-05-23.txt
-│   │   └── ...
 │   └── archive/
-└── notes/
-    ├── 2025-11-30-my-idea.md
-    └── ...
+├── notes/
+├── daily/
+├── .nk/
+│   ├── auto/
+│   │   └── run_nk_<vault>.sh
+│   └── templates/
+│       └── notes/
+│           └── daily.md.tpl (optional override)
 ```
 
 ---
 
-## ⚙️ Setup
+# 🧩 Architecture
 
-### 1. Clone this repo
+### nk.py (the router)
+Handles:
+- command parsing
+- path normalization
+- editor launching
+- template loading
+- dispatch to shell scripts in `internals/`
 
-```bash
-git clone https://github.com/YOUR-USERNAME/notes-kernel.git ~/Bruno/code/notes-kernel
-cd ~/Bruno/code/notes-kernel
+### Shell scripts (inside `internals/`)
+- `notes-init.sh`
+- `notes-videos-to-audios.sh`
+- `notes-audios-to-texts.sh`
+- `notes-audios-record.sh`
+- `notes-auto-service.sh`
+
+Each is isolated and versioned inside the kernel.
+
+### Templates
+Found under:
+
+```
+internals/templates/notes/*.tpl
+internals/templates/systemd/*.tpl
 ```
 
-### 2. Initialize local environment
+Vaults may override notes templates under:
 
+```
+.vault/.nk/templates/notes/
+```
+
+---
+
+# 🧪 Setup Instructions
+
+### 1. Clone
+```bash
+git clone https://github.com/YOUR-USERNAME/notes-kernel.git
+cd notes-kernel
+```
+
+### 2. Initialize the kernel environment
 ```bash
 nk init
 ```
 
-This creates `./venv` and installs all dependencies listed in `requirements.txt`.
+This:
+- Creates `venv/`
+- Installs pip requirements
+- Validates ffmpeg availability
 
-### 3. Add alias to your shell (`~/.zshrc` or `~/.bashrc`)
+### 3. Shell Alias
+Add to `~/.zshrc`:
 
-Or if you're using `oh-my-zsh` add it on ~/.oh-my-zsh/custom/my-aliases.zsh
 ```bash
-export NOTES_KERNEL_DIR="$HOME/Bruno/code/notes-kernel"
+export NOTES_KERNEL_DIR="$HOME/code/notes-kernel"
 alias nk='PATH="$NOTES_KERNEL_DIR/venv/bin:$PATH" python3 "$NOTES_KERNEL_DIR/nk.py"'
 ```
 
-Reload your shell:
-```bash
-source ~/.zshrc
-```
-
 ---
 
-## 🧪 Usage
+# 🛠 Usage Examples
 
 ### Initialize a vault
 ```bash
-cd ~/Bruno/vaults/bruno-vault
-nk vault init .
+nk vault init ~/Bruno/vaults/bruno2brain
 ```
 
-### Convert videos into audios
+### Convert videos → audios
 ```bash
-nk videos process
+nk videos process .
 ```
 
-### Transcribe audios → texts
+### Transcribe audios → text
 ```bash
-nk audios process
+nk audios process .
 ```
 
-### Create a new note
+### Record audio note
 ```bash
-nk notes new "My Idea"
+nk audios record . "idea-about-bitcoin"
 ```
 
-This creates:
-```
-notes/2025-11-30-my-idea.md
+### Create note
+```bash
+nk notes new "Bitcoin thesis"
 ```
 
-with:
-```markdown
-# My Idea
+### Daily note
+```bash
+nk daily
+```
 
-## Tags:
+Loads template if available.
+
+---
+
+# ⚡ Systemd Automation
+
+### Generate units (default interval: 5min)
+```bash
+nk autosetup systemd ~/Bruno/vaults/bruno2brain 5min
+```
+
+### Activate
+```bash
+nk autosetup systemd-activate ~/Bruno/vaults/bruno2brain
 ```
 
 ---
 
-## 🧰 Dependencies
+# 🧰 Dependencies
 
-### System-level
-- `ffmpeg` (for video → audio)
+### System Packages
+- `ffmpeg`
 - `python3` (>= 3.10)
 
-Install on Ubuntu:
+Ubuntu:
 ```bash
-sudo apt update
 sudo apt install ffmpeg python3-venv
 ```
 
-### Python (via `requirements.txt`)
+### Python packages (`requirements.txt`)
 ```
 openai-whisper
 ```
 
-Add more dependencies as needed and rerun `nk init`.
+Add more → rerun `nk init`.
 
 ---
 
-## 🧠 Philosophy
+# 🧠 Philosophy
 
-Notes Kernel follows **antifragile design principles**:
+Notes Kernel embodies antifragile design:
 
-| Principle | Applied as |
-|------------|-------------|
-| **Separation of concerns** | Each shell script does one job; wrappers manage orchestration |
-| **Self-containment** | The environment lives inside the kernel folder (`venv/`) |
-| **Transparency** | All conversions and moves are visible in stdout |
-| **Composability** | Each stage (video → audio → text → note) can be run independently |
-| **Resilience** | Errors in one step don’t corrupt vault data |
-
----
-
-## 🩺 Diagnostics
-
-To verify setup:
-
-```bash
-which ffmpeg
-which python3
-nk init
-```
-
-If `nk videos process` or `nk audios process` show `⚠️ Skipped`, check paths or missing binaries.
-
----
-
-## 🧰 Roadmap Ideas
-
-- [ ] `nk videos rec` – record video from the terminal
+| Principle | How it appears |
+|----------|----------------|
+| Via negativa | Fewer moving parts; avoid magic sync engines |
+| Optionality | Each stage is independent |
+| Transparency | All executions printed to stdout |
+| Flexibility | Templates override at vault level |
+| Resilience | Failures never corrupt vault data |
+| Robust automation | systemd timers instead of ad-hoc cron hacks |
 
 ---
 
 # 🪪 License
-This project is licensed under the [Creative Commons Attribution 4.0 International License (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
-
-If you use or distribute this project, please credit:
-**“Based on Notes Kernel by Bruno Coelho — https://github.com/rabb1tpt/notes-kernel”**
-
----
-
-## ✨ Credits
-
-Built by **Bruno Coelho**  
-Philosophy: *"Antifragile systems turn noise into knowledge."*
+Licensed under **CC BY 4.0**.
