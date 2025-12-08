@@ -31,6 +31,48 @@ def usage():
         "nk auto disable [vault-path]  -> Disable the vault timer (auto-processing OFF)\n"
     )
 
+
+def open_in_editor(path: Path) -> None:
+    """
+    Open the given file in the user's preferred editor, if configured.
+
+    Priority:
+    1) NK_EDITOR env var
+    2) EDITOR env var
+
+    If no editor is set, or the editor executable is not found,
+    this is a no-op (with a warning in the latter case).
+    """
+    editor = os.environ.get("NK_EDITOR") or os.environ.get("EDITOR")
+    if not editor:
+        print(f"⚠️  Missing env var `NK_EDITOR`. Please add it.")
+        return  0
+
+    try:
+        subprocess.run([editor, str(path)])
+    except FileNotFoundError:
+        print(f"⚠️  Editor '{editor}' not found on PATH; skipping open.")
+
+def load_note_template(name: str, vault_dir: Path) -> str | None:
+    """
+    Try to load a note template in this order:
+    1) Vault-specific: <vault>/.nk/templates/notes/<name>
+    2) Kernel default: <kernel>/internals/templates/notes/<name>
+    Returns the template text or None if not found.
+    """
+    # 1) Vault-specific
+    vault_tpl = vault_dir / ".nk" / "templates" / "notes" / name
+    if vault_tpl.is_file():
+        return vault_tpl.read_text()
+
+    # 2) Kernel default
+    kernel_dir = Path(__file__).resolve().parent
+    kernel_tpl = kernel_dir / "internals" / "templates" / "notes" / name
+    if kernel_tpl.is_file():
+        return kernel_tpl.read_text()
+
+    return None
+
 def load_systemd_template(name: str) -> str:
     """
     Load a systemd-related template from internals/templates/systemd.
@@ -397,7 +439,45 @@ def main(argv: list[str]) -> int:
         # sub is e.g. status, queue, run, logs, enable, disable
         target = normalize_path(rest[0] if rest else ".")
         return run_script("notes-auto-service.sh", sub, target)
- 
+
+
+    # nk daily -> create ./daily/yyyy-mm-dd.md (with optional template)
+    if cmd == "daily":
+        today = datetime.date.today().strftime("%Y-%m-%d")
+
+        daily_dir = Path(".") / "daily"
+        daily_dir.mkdir(exist_ok=True)
+
+        note_path = daily_dir / f"{today}.md"
+        if note_path.exists():
+            print(f"Daily note already exists: {note_path}")
+            open_in_editor(note_path)
+            return 0
+
+        # Where are we? Assume current working directory is the vault root
+        vault_dir = Path(".").resolve()
+
+        # Try to load a template (vault-specific first, then kernel default)
+        tpl = load_note_template("daily.md.tpl", vault_dir)
+
+        if tpl is not None:
+            # Allow templates to use {date} placeholder
+            try:
+                content = tpl.format(date=today)
+            except Exception as e:
+                print(f"Warning: Failed to format daily template: {e}")
+                print("Don't worry. Falling back to simple header.")
+                content = f"# {today}\n\n"
+        else:
+            # Fallback to previous simple behavior
+            content = f"# {today}\n\n"
+
+        note_path.write_text(content)
+        print(f"Created: {note_path}")
+
+        open_in_editor(note_path)
+        return 0
+
     print("Unknown nk command:", cmd)
     print("Run 'nk help' for usage.")
     return 1

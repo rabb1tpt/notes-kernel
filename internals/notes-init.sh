@@ -16,7 +16,6 @@ case "$VAULT_PATH" in
   "$KERNEL_ROOT"|"$KERNEL_ROOT"/*)
     echo "🚫 You cannot initialize a vault inside the notes-kernel repo:"
     echo "   Kernel repo: $KERNEL_ROOT"
-    echo "   Requested:   $VAULT_ABS"
     echo ""
     echo "   Please create your vault OUTSIDE the notes-kernel folder to keep it clean of your notes."
     echo "   Example:"
@@ -40,6 +39,7 @@ fi
 DIRS=(
   "$VAULT_PATH/inbox"
   "$VAULT_PATH/notes"
+  "$VAULT_PATH/daily"
   "$VAULT_PATH/videos/inbox"
   "$VAULT_PATH/videos/archive"
   "$VAULT_PATH/audios/inbox"
@@ -49,11 +49,28 @@ DIRS=(
 
 for d in "${DIRS[@]}"; do
   mkdir -p "$d"
-  # ensure Git tracks the directory even if empty
-  touch "$d/.gitkeep"
+
+  # Only add .gitkeep if the directory is empty
+  if [ -z "$(ls -A "$d")" ]; then
+    touch "$d/.gitkeep"
+  fi
 done
 
+# === Templates: copy default daily note template into vault (.nk/templates/notes) ===
+TEMPLATES_SRC="$SCRIPT_DIR/templates/notes"
+TEMPLATES_DEST="$VAULT_PATH/.nk/templates/notes"
 
+mkdir -p "$TEMPLATES_DEST"
+
+DAILY_TEMPLATE_SRC="$TEMPLATES_SRC/daily.md.tpl"
+DAILY_TEMPLATE_DEST="$TEMPLATES_DEST/daily.md.tpl"
+
+if [ -f "$DAILY_TEMPLATE_SRC" ] && [ ! -f "$DAILY_TEMPLATE_DEST" ]; then
+  cp "$DAILY_TEMPLATE_SRC" "$DAILY_TEMPLATE_DEST"
+  echo "  + Copied daily template to: .nk/templates/notes/daily.md.tpl"
+fi
+
+# TODO: turn this into a `tree` call. Must make `tree` part of the requirements.
 echo ""
 echo "✅ Vault initialized at: $VAULT_PATH"
 echo ""
@@ -61,6 +78,7 @@ echo "Structure created:"
 echo "  inbox/"
 echo "  videos/inbox/"
 echo "  videos/notes/"
+echo "  videos/daily/"
 echo "  videos/archive/"
 echo "  audios/inbox/"
 echo "  audios/transcripts/"
