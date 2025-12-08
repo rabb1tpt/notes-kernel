@@ -362,13 +362,15 @@ def main(argv: list[str]) -> int:
 
             if note_path.exists():
                 print(f"Note already exists: {note_path}")
+                open_in_editor(note_path)
                 return 1
 
             with open(note_path, "w") as f:
-                f.write(f"# {note_title}\n")
+                f.write(f"# {note_title}\n\n\n")
                 f.write("## Tags:\n\n")
 
             print(f"Created: {note_path}")
+            open_in_editor(note_path)
             return 0
         else:
             print("Unknown note command:", sub or "<missing>")
