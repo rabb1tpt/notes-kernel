@@ -45,6 +45,16 @@ DIRS=(
   "$VAULT_PATH/audios/inbox"
   "$VAULT_PATH/audios/transcripts"
   "$VAULT_PATH/audios/archive"
+  "$VAULT_PATH/inbound/inbox"
+  "$VAULT_PATH/inbound/processing"
+  "$VAULT_PATH/inbound/archive"
+  "$VAULT_PATH/studies/books"
+  "$VAULT_PATH/studies/courses"
+  "$VAULT_PATH/studies/inbox"
+  "$VAULT_PATH/thinking/inbox"
+  "$VAULT_PATH/thinking/drafts"
+  "$VAULT_PATH/thinking/publications"
+  "$VAULT_PATH/thinking/archive"
 )
 
 for d in "${DIRS[@]}"; do
@@ -73,15 +83,5 @@ fi
 # TODO: turn this into a `tree` call. Must make `tree` part of the requirements.
 echo ""
 echo "✅ Vault initialized at: $VAULT_PATH"
-echo ""
-echo "Structure created:"
-echo "  inbox/"
-echo "  videos/inbox/"
-echo "  videos/notes/"
-echo "  videos/daily/"
-echo "  videos/archive/"
-echo "  audios/inbox/"
-echo "  audios/transcripts/"
-echo "  audios/archive/"
 echo ""
 
