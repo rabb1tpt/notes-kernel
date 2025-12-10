@@ -445,15 +445,24 @@ def run_script(script_name: str, *args: str) -> int:
 
 
 def create_study_index(vault_dir: Path, study_title: str) -> int:
+    print("create_study_index")
+    print("=======params=======")
+    print(f"vauld_dir: {vault_dir}")
+    print(f"study_title: {study_title}")
+    print("=======params=======")
+
     studies_root = vault_dir / "studies"
     studies_root.mkdir(parents=True, exist_ok=True)
+    print(f"studies_root: {studies_root}")
 
     slug = slugify(study_title)
     study_dir = studies_root / slug
     study_dir.mkdir(parents=True, exist_ok=True)
+    print(f"study_dir: {study_dir}")
 
     index_filename = f"{slug}-index.md"
     index_path = study_dir / index_filename
+    print(f"index_path: {index_path}")
 
     if index_path.exists():
         print(f"Study index already exists: {index_path}")
@@ -482,12 +491,20 @@ def create_study_index(vault_dir: Path, study_title: str) -> int:
 
 
 def create_study_module(vault_dir: Path, study_title: str) -> int:
+    print("create_study_module")
+    print("=======params=======")
+    print(f"vauld_dir: {vault_dir}")
+    print(f"study_title: {study_title}")
+    print("=======params=======")
+
     studies_root = vault_dir / "studies"
     studies_root.mkdir(parents=True, exist_ok=True)
+    print(f"studies_root: {studies_root}")
 
     slug = slugify(study_title)
     study_dir = studies_root / slug
     study_dir.mkdir(parents=True, exist_ok=True)
+    print(f"study_dir: {study_dir}")
 
     # Find next module number
     existing = sorted(study_dir.glob(f"{slug}-module-*.md"))
@@ -507,6 +524,7 @@ def create_study_module(vault_dir: Path, study_title: str) -> int:
     module_num = next_n
     module_filename = f"{slug}-module-{module_num:02d}.md"
     module_path = study_dir / module_filename
+    print(f"module_path: {module_path}")
 
     if module_path.exists():
         print(f"Study module already exists: {module_path}")
