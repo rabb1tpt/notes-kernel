@@ -7,6 +7,41 @@ import re
 
 from pathlib import Path
 
+
+def short_usage():
+    print(
+        "VAULT\n"
+        "  nk vault init\n"
+        "\n"
+        "INBOUND\n"
+        "  nk inbound inbox\n"
+        "  nk inbound processing\n"
+        "\n"
+        "THINKING\n"
+        "  nk thinking inbox\n"
+        "  nk thinking draft\n"
+        "  nk thinking publication\n"
+        "\n"
+        "NOTES\n"
+        "  nk notes new\n"
+        "  nk notes insight\n"
+        "\n"
+        "STUDY\n"
+        "  nk study index \"Name\"\n"
+        "  nk study module \"Name\"\n"
+        "  nk study open \"Name\"\n"
+        "\n"
+        "MEDIA\n"
+        "  nk videos process\n"
+        "  nk audios process\n"
+        "  nk audios record\n"
+        "\n"
+        "AUTO\n"
+        "  nk autosetup systemd\n"
+        "  nk autosetup systemd-activate\n"
+        "  nk auto status|queue|run|logs|enable|disable\n"
+    )
+
 def usage():
     print(
         "Usage:\n"
@@ -524,13 +559,25 @@ def open_study_index(vault_dir: Path, study_title: str) -> int:
     return 0
 
 def main(argv: list[str]) -> int:
-    if not argv or argv[0] in {"help", "-h", "--help"}:
-        usage()
+    if not argv:
+        short_usage()
         return 0
 
     cmd = argv[0]
     sub = argv[1] if len(argv) > 1 else None
     rest = argv[2:] if len(argv) > 2 else []
+
+    # nk     → short help
+    # nk -h  → short help
+    if cmd == "-h" or len(argv) == 0:
+        short_usage()
+        return 0
+
+    # nk help       → long help
+    # nk --help     → long help
+    if cmd in ("help", "--help"):
+        usage()
+        return 0
 
     if cmd == "init":
         """
