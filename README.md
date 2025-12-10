@@ -1,91 +1,142 @@
 # 🧠 Notes Kernel (`nk`)
 
-Notes Kernel (nk) is a lightweight CLI toolkit for managing your personal note vaults.
+A tiny, fast CLI that helps you **capture, process, and organize notes** inside a vault you control.
 
-It handles the entire flow from video recording -> audio -> transcript -> note, powered by local tools and open-source AI (like OpenAI Whisper).
+- Create notes instantly  
+- Capture audio → transcripts automatically  
+- Structure your thinking (inbound, drafts, insights, study modules)  
+- Automate everything via systemd  
+- Fully compatible with Obsidian
 
-It also enables you to keep things simple and just create a quick note too. 
-
-Works beautifully to create note vaults that you can manage on Obsidian for example.
-
----
-
-# 🚀 Commands Overview
-
-### 🔧 Environment Setup
-| Command | Description |
-|--------|-------------|
-| `nk init` | Creates/updates local `venv/`, installs dependencies, checks ffmpeg |
+**Simple mental model:**  
+> “nk creates the right note in the right place with the right template.”
 
 ---
 
-### 🗂️ Vault Management
-| Command | Description |
-|--------|-------------|
-| `nk vault init [path]` | Initializes a vault folder structure |
+# 🚀 Quick Start
 
----
-
-### 🎬 Video → Audio
-| Command | Description |
-|--------|-------------|
-| `nk videos process [vault-path]` | Converts `.mp4` → `.mp3` into `audios/inbox/` |
-
----
-
-### 🎧 Audio → Transcript
-| Command | Description |
-|--------|-------------|
-| `nk audios process [vault-path]` | Transcribes `.mp3` → `.txt` via Whisper |
-| `nk audios record [vault-path] [filename]` | Records audio directly into the vault |
-
----
-
-### 📝 Notes
-| Command | Description |
-|--------|-------------|
-| `nk notes new "title"` | Creates a markdown note with date prefix |
-| `nk daily` | Creates (or opens) the daily note using templates |
-
-> Daily notes now support templates:
-- Vault override: `.nk/templates/notes/daily.md.tpl`
-- Kernel fallback: `internals/templates/notes/daily.md.tpl`
-
-Templates may use `{date}` placeholder.
-
----
-
-### ⚙️ Systemd Auto-Processing
-| Command | Description |
-|--------|-------------|
-| `nk autosetup systemd [vault-path] [interval]` | Generates systemd service + timer |
-| `nk autosetup systemd-activate [vault-path]` | Activates the timer |
-| `nk auto status [vault-path]` | Show timer/service status |
-| `nk auto queue [vault-path]` | Count pending items |
-| `nk auto run [vault-path]` | Manually trigger a run |
-| `nk auto logs [vault-path]` | View recent logs |
-| `nk auto enable / disable [vault-path]` | Toggle automation |
-
-Automation is vault-specific.  
-Units are placed into:
-
+### 1. Install
+```bash
+nk init
 ```
-~/.config/systemd/user/nk-<vault-name>.service
-~/.config/systemd/user/nk-<vault-name>.timer
+Creates/updates the local virtual environment and checks for ffmpeg.
+
+### 2. Create a vault
+```bash
+nk vault init ~/myvault
 ```
 
-The vault itself receives a runnable script:
+### 3. Start taking notes
+```bash
+cd ~/myvault
+nk notes new "My first note"
+nk daily
+nk inbound inbox "Idea about Bitcoin"
+nk thinking draft "Article on antifragility"
+```
 
-```
-.vault/.nk/auto/run_nk_<vault>.sh
-```
+That’s the core workflow.
 
 ---
 
-# 📐 Vault Layout
+# 🗂️ Commands Overview
+
+## Notes
+| Command | Description |
+|--------|-------------|
+| `nk notes new "title"` | Create a basic note in `notes/` |
+| `nk notes insight [title]` | Create an evergreen insight note |
+| `nk daily` | Create or open today’s daily note |
+
+Templates (optional):
+
+```
+.vault/.nk/templates/notes/
+```
+
+Vault template overrides kernel template automatically.
+
+---
+
+## Inbound (Capture Flow)
+| Command | Description |
+|--------|-------------|
+| `nk inbound inbox [title]` | Quick capture note |
+| `nk inbound processing [title]` | Processing note |
+
+Perfect for “get it out of your head now, sort later.”
+
+---
+
+## Thinking (Writing Flow)
+| Command | Description |
+|--------|-------------|
+| `nk thinking inbox [title]` | Raw ideas |
+| `nk thinking draft [title]` | Draft essays/frameworks |
+| `nk thinking publication [title]` | Final/publishable notes |
+
+---
+
+## Study (Structured Learning)
+| Command | Description |
+|--------|-------------|
+| `nk study index "Study Title"` | Create a study root folder |
+| `nk study module "Study Title"` | Add module (auto-numbered) |
+| `nk study open "Study Title"` | Open index note |
+
+Great for courses, books, long-term topics.
+
+---
+
+## Media Processing
+### Video to Audio
+```bash
+nk videos process [vault]
+```
+
+### Audio to Transcript
+```bash
+nk audios process [vault]
+```
+
+### Record audio note
+```bash
+nk audios record [vault] [filename]
+```
+
+These commands funnel all media → transcripts → notes automatically.
+
+---
+
+## Automation (systemd)
+| Command | Description |
+|--------|-------------|
+| `nk autosetup systemd [vault] [interval]` | Generate automation units |
+| `nk autosetup systemd-activate [vault]` | Activate timer |
+| `nk auto status [vault]` | Status of auto-processing |
+| `nk auto queue [vault]` | Count pending media |
+| `nk auto run [vault]` | Trigger now |
+| `nk auto logs [vault]` | Show logs |
+| `nk auto enable/disable [vault]` | Toggle |
+
+This keeps your vault always up-to-date without thinking about it.
+
+---
+
+# 📐 Vault Layout (Minimal View)
 
 ```
 vault/
+├── notes/
+├── inbound/
+│   ├── inbox/
+│   └── processing/
+├── thinking/
+│   ├── inbox/
+│   ├── drafts/
+│   └── publications/
+├── studies/
+├── daily/
 ├── videos/
 │   ├── inbox/
 │   └── archive/
@@ -93,73 +144,18 @@ vault/
 │   ├── inbox/
 │   ├── transcripts/
 │   └── archive/
-├── notes/
-├── daily/
-├── .nk/
-│   ├── auto/
-│   │   └── run_nk_<vault>.sh
-│   └── templates/
-│       └── notes/
-│           └── daily.md.tpl (optional override)
+└── .nk/
+    ├── auto/
+    └── templates/
 ```
+
+Everything has one obvious place.
 
 ---
 
-# 🧩 Architecture
+# 🧪 Setup (Once)
 
-### nk.py (the router)
-Handles:
-- command parsing
-- path normalization
-- editor launching
-- template loading
-- dispatch to shell scripts in `internals/`
-
-### Shell scripts (inside `internals/`)
-- `notes-init.sh`
-- `notes-videos-to-audios.sh`
-- `notes-audios-to-texts.sh`
-- `notes-audios-record.sh`
-- `notes-auto-service.sh`
-
-Each is isolated and versioned inside the kernel.
-
-### Templates
-Found under:
-
-```
-internals/templates/notes/*.tpl
-internals/templates/systemd/*.tpl
-```
-
-Vaults may override notes templates under:
-
-```
-.vault/.nk/templates/notes/
-```
-
----
-
-# 🧪 Setup Instructions
-
-### 1. Clone
-```bash
-git clone https://github.com/YOUR-USERNAME/notes-kernel.git
-cd notes-kernel
-```
-
-### 2. Initialize the kernel environment
-```bash
-nk init
-```
-
-This:
-- Creates `venv/`
-- Installs pip requirements
-- Validates ffmpeg availability
-
-### 3. Shell Alias
-Add to `~/.zshrc`:
+Add to `.zshrc`:
 
 ```bash
 export NOTES_KERNEL_DIR="$HOME/code/notes-kernel"
@@ -168,90 +164,21 @@ alias nk='PATH="$NOTES_KERNEL_DIR/venv/bin:$PATH" python3 "$NOTES_KERNEL_DIR/nk.
 
 ---
 
-# 🛠 Usage Examples
+# 🧘 Philosophy
 
-### Initialize a vault
-```bash
-nk vault init ~/Bruno/vaults/bruno2brain
-```
+**Less is more.**  
+The kernel avoids complexity and stays out of your way.
 
-### Convert videos → audios
-```bash
-nk videos process .
-```
+Core principles:
 
-### Transcribe audios → text
-```bash
-nk audios process .
-```
-
-### Record audio note
-```bash
-nk audios record . "idea-about-bitcoin"
-```
-
-### Create note
-```bash
-nk notes new "Bitcoin thesis"
-```
-
-### Daily note
-```bash
-nk daily
-```
-
-Loads template if available.
-
----
-
-# ⚡ Systemd Automation
-
-### Generate units (default interval: 5min)
-```bash
-nk autosetup systemd ~/Bruno/vaults/bruno2brain 5min
-```
-
-### Activate
-```bash
-nk autosetup systemd-activate ~/Bruno/vaults/bruno2brain
-```
-
----
-
-# 🧰 Dependencies
-
-### System Packages
-- `ffmpeg`
-- `python3` (>= 3.10)
-
-Ubuntu:
-```bash
-sudo apt install ffmpeg python3-venv
-```
-
-### Python packages (`requirements.txt`)
-```
-openai-whisper
-```
-
-Add more → rerun `nk init`.
-
----
-
-# 🧠 Philosophy
-
-Notes Kernel embodies antifragile design:
-
-| Principle | How it appears |
-|----------|----------------|
-| Via negativa | Fewer moving parts; avoid magic sync engines |
-| Optionality | Each stage is independent |
-| Transparency | All executions printed to stdout |
-| Flexibility | Templates override at vault level |
-| Resilience | Failures never corrupt vault data |
-| Robust automation | systemd timers instead of ad-hoc cron hacks |
+- **Local-first.** Your notes stay on your machine.  
+- **Fail-safe.** Errors never corrupt your vault.  
+- **Predictable.** Every command does exactly one thing.  
+- **Extensible.** Templates override easily, no magic.  
+- **Automation without mystery.** systemd keeps things running without background daemons.
 
 ---
 
 # 🪪 License
-Licensed under **CC BY 4.0**.
+
+CC BY 4.0
