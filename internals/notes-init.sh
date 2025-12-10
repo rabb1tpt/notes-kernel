@@ -8,8 +8,8 @@ if [ -z "$VAULT_PATH" ]; then
 fi
 
 # === Detect kernel root (repo root) ===
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-KERNEL_ROOT="$SCRIPT_DIR"   # your scripts live directly in repo root
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"        # this script's directory: /notes-kernel/internals
+KERNEL_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"        # repo root: /notes-kernel
 
 # === SAFETY CHECK: prevent vault inside kernel repo ===
 case "$VAULT_PATH" in
@@ -66,18 +66,31 @@ for d in "${DIRS[@]}"; do
   fi
 done
 
-# === Templates: copy default daily note template into vault (.nk/templates/notes) ===
-TEMPLATES_SRC="$SCRIPT_DIR/templates/notes"
-TEMPLATES_DEST="$VAULT_PATH/.nk/templates/notes"
+
+# Kernel templates live in <kernel-root>/internals/templates/notes
+TEMPLATES_SRC="$KERNEL_ROOT/internals/templates/notes"
+TEMPLATES_DEST="$VAULT_PATH/templates"
 
 mkdir -p "$TEMPLATES_DEST"
 
-DAILY_TEMPLATE_SRC="$TEMPLATES_SRC/daily.md.tpl"
-DAILY_TEMPLATE_DEST="$TEMPLATES_DEST/daily.md.tpl"
+# Copy all .md templates if they don't already exist in the vault
+if [ -d "$TEMPLATES_SRC" ]; then
+  for tpl in "$TEMPLATES_SRC"/*.md; do
+    # if there are no .md files, the glob returns the pattern itself
+    [ -e "$tpl" ] || continue
 
-if [ -f "$DAILY_TEMPLATE_SRC" ] && [ ! -f "$DAILY_TEMPLATE_DEST" ]; then
-  cp "$DAILY_TEMPLATE_SRC" "$DAILY_TEMPLATE_DEST"
-  echo "  + Copied daily template to: .nk/templates/notes/daily.md.tpl"
+    base="$(basename "$tpl")"
+    dest="$TEMPLATES_DEST/$base"
+
+    if [ -f "$dest" ]; then
+      echo "  • Template exists, not overwriting: templates/$base"
+    else
+      cp "$tpl" "$dest"
+      echo "  + Installed template: templates/$base"
+    fi
+  done
+else
+  echo "  ! Kernel template directory not found: $TEMPLATES_SRC"
 fi
 
 # TODO: turn this into a `tree` call. Must make `tree` part of the requirements.

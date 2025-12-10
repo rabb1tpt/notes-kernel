@@ -3,34 +3,166 @@ import sys
 import subprocess
 import datetime
 import os
+import re
 
 from pathlib import Path
 
 def usage():
     print(
         "Usage:\n"
-        "nk init\t-> Sets up or updates the local Python virtual environment\n"
+        "──────────────────────────────────────────────\n"
+        "  nk init\n"
+        "      Sets up or updates the local Python virtual environment\n"
         "\n"
-        "nk vault init [path] -> Initializes a vault folder structure\n"
+        "  nk vault init [path]\n"
+        "      Initializes a vault folder structure (directories + templates)\n"
         "\n"
-        "nk videos process [vault-path] -> Converts .mp4 videos to .mp3 audios\n"
+        "──────────────────────────────────────────────\n"
+        "Inbound Processing\n"
+        "──────────────────────────────────────────────\n"
+        "  nk inbound inbox [title]\n"
+        "      Create a new inbound capture note in inbound/inbox/\n"
         "\n"
-        "nk audios process [vault-path] -> Transcribes .mp3 audios to .txt transcripts using Whisper\n"
-        "nk audios record [vault-path] [filename] -> Records a .mp3 audio note into the vault\n"
+        "  nk inbound processing [title]\n"
+        "      Create a new inbound processing note in inbound/processing/\n"
         "\n"
-        "nk notes new \"title\" -> Creates a markdown note with a standard template\n"
+        "──────────────────────────────────────────────\n"
+        "Thinking / Writing\n"
+        "──────────────────────────────────────────────\n"
+        "  nk thinking inbox [title]\n"
+        "      Capture a raw idea/thought in thinking/inbox/\n"
         "\n"
-        "nk autosetup systemd [vault-path] [interval] -> Generate systemd service+timer to auto-process audios/videos\n"
-        "nk autosetup systemd-activate [vault-path] -> Activate the generated systemd timer\n"
+        "  nk thinking draft [title]\n"
+        "      Create a draft essay/framework in thinking/drafts/\n"
         "\n"
-        "nk auto status [vault-path]   -> Show service/timer status + queue\n"
-        "nk auto queue [vault-path]    -> Show counts of pending MP4/MP3 in inbox\n"
-        "nk auto run [vault-path]      -> Trigger a manual run of the vault service now\n"
-        "nk auto logs [vault-path]     -> Show recent logs for the vault service\n"
-        "nk auto enable [vault-path]   -> Enable the vault timer (auto-processing ON)\n"
-        "nk auto disable [vault-path]  -> Disable the vault timer (auto-processing OFF)\n"
+        "  nk thinking publication [title]\n"
+        "      Create a publication-ready note in thinking/publications/\n"
+        "\n"
+        "──────────────────────────────────────────────\n"
+        "Insights / Evergreen Notes\n"
+        "──────────────────────────────────────────────\n"
+        "  nk notes insight [title]\n"
+        "      Create an evergreen insight note in notes/\n"
+        "\n"
+        "  nk notes new \"title\"\n"
+        "      Create a plain markdown note with a simple default template\n"
+        "\n"
+        "──────────────────────────────────────────────\n"
+        "Study Projects\n"
+        "──────────────────────────────────────────────\n"
+        "  nk study index \"Study Title\"\n"
+        "      Create a study folder under studies/<slug>/ with an index note\n"
+        "\n"
+        "  nk study module \"Study Title\"\n"
+        "      Create an auto-numbered module note inside the study folder\n"
+        "\n"
+        "  nk study open \"Study Title\"\n"
+        "      Open the study's index note\n"
+        "\n"
+        "──────────────────────────────────────────────\n"
+        "Audio / Video Automation\n"
+        "──────────────────────────────────────────────\n"
+        "  nk videos process [vault-path]\n"
+        "      Convert .mp4 videos in inbox to .mp3 audios\n"
+        "\n"
+        "  nk audios process [vault-path]\n"
+        "      Transcribe .mp3 audios to .txt using Whisper\n"
+        "\n"
+        "  nk audios record [vault-path] [filename]\n"
+        "      Record a .mp3 audio note directly into the vault\n"
+        "\n"
+        "──────────────────────────────────────────────\n"
+        "Automation (systemd)\n"
+        "──────────────────────────────────────────────\n"
+        "  nk autosetup systemd [vault-path] [interval]\n"
+        "      Generate systemd service+timer for automatic processing\n"
+        "\n"
+        "  nk autosetup systemd-activate [vault-path]\n"
+        "      Activate the generated systemd timer\n"
+        "\n"
+        "  nk auto status [vault-path]\n"
+        "      Show systemd timer/service status and queues\n"
+        "\n"
+        "  nk auto queue [vault-path]\n"
+        "      Show counts of pending videos/audios in inbox\n"
+        "\n"
+        "  nk auto run [vault-path]\n"
+        "      Trigger an immediate processing run via systemd\n"
+        "\n"
+        "  nk auto logs [vault-path]\n"
+        "      Show recent logs for the vault's systemd service\n"
+        "\n"
+        "  nk auto enable [vault-path]\n"
+        "      Enable auto-processing timer\n"
+        "\n"
+        "  nk auto disable [vault-path]\n"
+        "      Disable auto-processing timer\n"
     )
 
+def slugify(s: str) -> str:
+    """
+    Convert a title into a filesystem-friendly slug.
+    """
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+
+
+def today_str() -> str:
+    return datetime.date.today().strftime("%Y-%m-%d")
+
+
+def now_time_str() -> str:
+    return datetime.datetime.now().strftime("%H:%M")
+
+
+def create_note_from_template(
+    template_name: str,
+    vault_dir: Path,
+    dest_dir: Path,
+    default_slug: str,
+    title_arg: str | None = None,
+) -> int:
+    """
+    Generic helper:
+    - loads template from vault/templates or kernel internals
+    - writes note into dest_dir with today's date + slug
+    - fills {date}, {time}, {title} placeholders
+    - opens in editor
+    """
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    today = today_str()
+    time_now = now_time_str()
+
+    if title_arg:
+        note_title = title_arg
+        slug = slugify(title_arg)
+    else:
+        note_title = default_slug.replace("-", " ").title()
+        slug = default_slug
+
+    filename = f"{today}-{slug}.md"
+    note_path = dest_dir / filename
+
+    if note_path.exists():
+        print(f"Note already exists: {note_path}")
+        open_in_editor(note_path)
+        return 0
+
+    tpl = load_note_template(template_name, vault_dir)
+
+    if tpl is not None:
+        try:
+            content = tpl.format(date=today, time=time_now, title=note_title)
+        except Exception as e:
+            print(f"Warning: Failed to format template '{template_name}': {e}")
+            content = f"# {note_title}\n\n"
+    else:
+        content = f"# {note_title}\n\n"
+
+    note_path.write_text(content)
+    print(f"Created: {note_path}")
+    open_in_editor(note_path)
+    return 0
 
 def open_in_editor(path: Path) -> None:
     """
@@ -56,12 +188,12 @@ def open_in_editor(path: Path) -> None:
 def load_note_template(name: str, vault_dir: Path) -> str | None:
     """
     Try to load a note template in this order:
-    1) Vault-specific: <vault>/.nk/templates/notes/<name>
-    2) Kernel default: <kernel>/internals/templates/notes/<name>
+    1) Vault-specific
+    2) Kernel default
     Returns the template text or None if not found.
     """
     # 1) Vault-specific
-    vault_tpl = vault_dir / ".nk" / "templates" / "notes" / name
+    vault_tpl = vault_dir / "templates" / name
     if vault_tpl.is_file():
         return vault_tpl.read_text()
 
@@ -276,6 +408,121 @@ def run_script(script_name: str, *args: str) -> int:
 
         return e.returncode
 
+
+def create_study_index(vault_dir: Path, study_title: str) -> int:
+    studies_root = vault_dir / "studies"
+    studies_root.mkdir(parents=True, exist_ok=True)
+
+    slug = slugify(study_title)
+    study_dir = studies_root / slug
+    study_dir.mkdir(parents=True, exist_ok=True)
+
+    index_filename = f"{slug}-index.md"
+    index_path = study_dir / index_filename
+
+    if index_path.exists():
+        print(f"Study index already exists: {index_path}")
+        open_in_editor(index_path)
+        return 0
+
+    tpl = load_note_template("study-index.md", vault_dir)
+    today = today_str()
+
+    if tpl is not None:
+        try:
+            content = tpl.format(
+                title=study_title,
+                date=today,
+            )
+        except Exception as e:
+            print(f"Warning: Failed to format study-index template: {e}")
+            content = f"# {study_title}\n\n"
+    else:
+        content = f"# {study_title}\n\n"
+
+    index_path.write_text(content)
+    print(f"Created study index: {index_path}")
+    open_in_editor(index_path)
+    return 0
+
+
+def create_study_module(vault_dir: Path, study_title: str) -> int:
+    studies_root = vault_dir / "studies"
+    studies_root.mkdir(parents=True, exist_ok=True)
+
+    slug = slugify(study_title)
+    study_dir = studies_root / slug
+    study_dir.mkdir(parents=True, exist_ok=True)
+
+    # Find next module number
+    existing = sorted(study_dir.glob(f"{slug}-module-*.md"))
+    next_n = 1
+    for path in existing:
+        # Expect filenames like slug-module-01.md
+        stem = path.stem  # e.g. "ml-course-module-01"
+        parts = stem.split("-")
+        if len(parts) >= 3 and parts[-2] == "module":
+            try:
+                num = int(parts[-1])
+                if num >= next_n:
+                    next_n = num + 1
+            except ValueError:
+                continue
+
+    module_num = next_n
+    module_filename = f"{slug}-module-{module_num:02d}.md"
+    module_path = study_dir / module_filename
+
+    if module_path.exists():
+        print(f"Study module already exists: {module_path}")
+        open_in_editor(module_path)
+        return 0
+
+    tpl = load_note_template("study-module.md", vault_dir)
+    today = today_str()
+
+    # Human-friendly title for inside the file
+    module_title = f"{study_title} — Module {module_num:02d}"
+
+    if tpl is not None:
+        try:
+            content = tpl.format(
+                title=module_title,
+                date=today,
+                n=module_num,
+                study=study_title,
+            )
+        except Exception as e:
+            print(f"Warning: Failed to format study-module template: {e}")
+            content = f"# {module_title}\n\n"
+    else:
+        content = f"# {module_title}\n\n"
+
+    module_path.write_text(content)
+    print(f"Created study module: {module_path}")
+    open_in_editor(module_path)
+    return 0
+
+
+def open_study_index(vault_dir: Path, study_title: str) -> int:
+    """
+    Open the index note for a given study in the editor.
+    """
+    studies_root = vault_dir / "studies"
+    slug = slugify(study_title)
+    study_dir = studies_root / slug
+    index_path = study_dir / f"{slug}-index.md"
+
+    if not index_path.exists():
+        print(f"🚫 Study index not found for: {study_title}")
+        print(f"Expected at: {index_path}")
+        print('Hint: create it with: nk study index "{study_title}"')
+        return 1
+
+    print(f"Opening study index: {index_path}")
+    open_in_editor(index_path)
+    return 0
+
 def main(argv: list[str]) -> int:
     if not argv or argv[0] in {"help", "-h", "--help"}:
         usage()
@@ -352,8 +599,8 @@ def main(argv: list[str]) -> int:
                 print("Usage: nk notes new \"note title\"")
                 return 1
             note_title = rest[0]
-            date_prefix = datetime.date.today().strftime("%Y-%m-%d")
-            safe_title = note_title.lower().replace(" ", "-")
+            date_prefix = today_str()
+            safe_title = slugify(note_title)
             filename = f"{date_prefix}-{safe_title}.md"
 
             notes_dir = Path(".") / "notes"
@@ -372,9 +619,24 @@ def main(argv: list[str]) -> int:
             print(f"Created: {note_path}")
             open_in_editor(note_path)
             return 0
+
+        elif sub == "insight":
+            # nk notes insight [title]
+            vault_dir = Path(".").resolve()
+            title_arg = rest[0] if rest else None
+            return create_note_from_template(
+                template_name="note-insight.md",
+                vault_dir=vault_dir,
+                dest_dir=vault_dir / "notes",
+                default_slug="insight",
+                title_arg=title_arg,
+            )
+
         else:
-            print("Unknown note command:", sub or "<missing>")
-            print("Usage: nk note new \"note title\"")
+            print("Unknown notes command:", sub or "<missing>")
+            print("Usage:")
+            print("  nk notes new \"note title\"")
+            print("  nk notes insight [title]")
             return 1
 
     if cmd == "audios":
@@ -460,7 +722,7 @@ def main(argv: list[str]) -> int:
         vault_dir = Path(".").resolve()
 
         # Try to load a template (vault-specific first, then kernel default)
-        tpl = load_note_template("daily.md.tpl", vault_dir)
+        tpl = load_note_template("daily.md", vault_dir)
 
         if tpl is not None:
             # Allow templates to use {date} placeholder
@@ -479,6 +741,103 @@ def main(argv: list[str]) -> int:
 
         open_in_editor(note_path)
         return 0
+
+    # nk inbound inbox / nk inbound processing
+    if cmd == "inbound":
+        if sub in {"inbox", "processing"}:
+            vault_dir = Path(".").resolve()
+            title_arg = rest[0] if rest else None
+
+            if sub == "inbox":
+                return create_note_from_template(
+                    template_name="inbound-inbox.md",
+                    vault_dir=vault_dir,
+                    dest_dir=vault_dir / "inbound" / "inbox",
+                    default_slug="inbound-inbox",
+                    title_arg=title_arg,
+                )
+            else:  # processing
+                return create_note_from_template(
+                    template_name="inbound-processing.md",
+                    vault_dir=vault_dir,
+                    dest_dir=vault_dir / "inbound" / "processing",
+                    default_slug="inbound-processing",
+                    title_arg=title_arg,
+                )
+        else:
+            print("Usage:")
+            print("  nk inbound inbox [title]")
+            print("  nk inbound processing [title]")
+            return 1
+
+
+    if cmd == "thinking":
+        if sub in {"inbox", "draft", "publication"}:
+            vault_dir = Path(".").resolve()
+            title_arg = rest[0] if rest else None
+
+            if sub == "inbox":
+                return create_note_from_template(
+                    template_name="thinking-inbox.md",
+                    vault_dir=vault_dir,
+                    dest_dir=vault_dir / "thinking" / "inbox",
+                    default_slug="thinking-inbox",
+                    title_arg=title_arg,
+                )
+            elif sub == "draft":
+                return create_note_from_template(
+                    template_name="thinking-draft.md",
+                    vault_dir=vault_dir,
+                    dest_dir=vault_dir / "thinking" / "drafts",
+                    default_slug="thinking-draft",
+                    title_arg=title_arg,
+                )
+            else:  # publication
+                return create_note_from_template(
+                    template_name="thinking-publication.md",
+                    vault_dir=vault_dir,
+                    dest_dir=vault_dir / "thinking" / "publications",
+                    default_slug="thinking-publication",
+                    title_arg=title_arg,
+                )
+        else:
+            print("Usage:")
+            print("  nk thinking inbox [title]")
+            print("  nk thinking draft [title]")
+            print("  nk thinking publication [title]")
+            return 1
+
+
+    if cmd == "study":
+        vault_dir = Path(".").resolve()
+
+        if sub == "index":
+            if not rest:
+                print("Usage: nk study index \"Study Title\"")
+                return 1
+            study_title = rest[0]
+            return create_study_index(vault_dir, study_title)
+
+        elif sub == "module":
+            if not rest:
+                print("Usage: nk study module \"Study Title\"")
+                return 1
+            study_title = rest[0]
+            return create_study_module(vault_dir, study_title)
+
+        elif sub == "open":
+            if not rest:
+                print("Usage: nk study open \"Study Title\"")
+                return 1
+            study_title = rest[0]
+            return open_study_index(vault_dir, study_title)
+
+        else:
+            print("Unknown study command:", sub or "<missing>")
+            print("Usage:")
+            print("  nk study index \"Study Title\"")
+            print("  nk study module \"Study Title\"")
+            return 1
 
     print("Unknown nk command:", cmd)
     print("Run 'nk help' for usage.")
