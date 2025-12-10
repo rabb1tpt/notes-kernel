@@ -49,12 +49,15 @@ echo "[nk-auto] Processing audios..."
 echo "[nk-auto] Processing videos..."
 "$PYTHON_BIN" "$NK_PY" videos process "$VAULT"
 
-# 3) Commit & push any changes created by nk (best-effort)
+# 3) Commit & push only transcripts created by nk (best-effort)
 if [ "$IS_GIT_REPO" -eq 1 ]; then
-  if ! git diff --quiet; then
-    echo "[nk-auto] Changes detected; committing and pushing..."
-    git add .
-    if git commit -m "auto: process audios/videos"; then
+  # Stage only the transcripts directory
+  git add audios/transcripts || true
+
+  # Check if there is anything staged for that path
+  if ! git diff --cached --quiet -- audios/transcripts; then
+    echo "[nk-auto] Transcript changes detected; committing and pushing..."
+    if git commit -m "auto: process audios/videos (transcripts only)"; then
       if ! git push; then
         echo "[nk-auto] WARNING: git push failed; changes are only local."
       else
@@ -64,7 +67,7 @@ if [ "$IS_GIT_REPO" -eq 1 ]; then
       echo "[nk-auto] WARNING: git commit failed; leaving changes staged/unstaged."
     fi
   else
-    echo "[nk-auto] No changes to commit."
+    echo "[nk-auto] No transcript changes to commit."
   fi
 fi
 
